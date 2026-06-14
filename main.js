@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Eye in the Cloud - A Google AI Studio Focused Experience
+// @name         Eye in the Cloud - A Google AI Studio Focused Experience (2026 Resilience Update)
 // @namespace    https://github.com/soitgoes-again/eyeinthecloud
-// @version      0.639
+// @version      1.0.0
 // @description  Get focused by hiding the clutter, hide chat history, lag free text box, VIBE Mode, and themes!
-// @author       so it goes...again
+// @author       so it goes...again (Forked/Updated 2026)
 // @match        https://aistudio.google.com/*
 // @resource     MAIN_CSS https://raw.githubusercontent.com/soitgoes-again/eyeinthecloud/main/css/main.css
 // @resource     POPUP_CSS https://raw.githubusercontent.com/soitgoes-again/eyeinthecloud/main/css/modal-popup.css
@@ -25,32 +25,35 @@
 // @grant        GM_getResourceText
 // @run-at       document-idle
 // ==/UserScript==
- 
+
 !function() {
     "use strict";
+
+    // --- 2026 DOM Resilience Update ---
+    // Expanded selectors with fallbacks to catch newer Google AI Studio DOM changes
     window.Config = {
         selectors: {
-            leftSidebar: "ms-navbar",
-            rightSidebar: "ms-right-side-panel",
-            header: "ms-header-root",
-            toolbar: "ms-toolbar",
-            chatInput: "ms-prompt-input-wrapper textarea",
-            runButton: 'button.run-button[aria-label="Run"]',
-            overallLayout: "body > app-root > ms-app > div",
-            chatContainer: "ms-autoscroll-container",
-            userTurn: 'ms-chat-turn:has([data-turn-role="User"])',
-            aiTurn: 'ms-chat-turn:has([data-turn-role="Model"])',
-            aiTurnMoreOptionsButton: 'ms-chat-turn-options button[aria-label="Open options"], ms-chat-turn-options button[aria-label="More options"]',
-            aiTurnContextMenuItems: 'div.cdk-overlay-pane:not([style*="display: none"]) .mat-mdc-menu-item, div.cdk-overlay-pane:not([style*="display: none"]) .mdc-list-item',
-            siteHeading: "h1.gradient-text",
-            promptChipsContainer: ".chips-container",
-            inputPlaceholderOverlay: ".placeholder-overlay",
-            chatTurnFooter: ".turn-footer",
-            aiTurnCodeBlock: "pre > code, pre, ms-code-block",
-            zeroStateWrapper: ".zero-state-wrapper",
-            anyChatTurn: "ms-chat-turn",
-            siteDisclaimerText: ".disclaimer-container span.disclaimer",
-            promptInputWrapper: ".prompt-input-wrapper-container"
+            leftSidebar: "ms-navbar, nav[aria-label='Main menu'], aside.sidebar, .side-nav",
+            rightSidebar: "ms-right-side-panel, .right-panel, aside[aria-label='Settings']",
+            header: "ms-header-root, header.main-header, top-app-bar, header",
+            toolbar: "ms-toolbar, .toolbar-container, [role='toolbar'], .prompt-toolbar",
+            chatInput: "ms-prompt-input-wrapper textarea, textarea[aria-label*='prompt' i], textarea[placeholder*='Type' i], .prompt-input textarea",
+            runButton: 'button.run-button[aria-label="Run"], button[aria-label*="Run" i], button.send-button, button[mattooltip*="Run"]',
+            overallLayout: "body > app-root > ms-app > div, app-root > div, .app-layout",
+            chatContainer: "ms-autoscroll-container, .chat-history, .messages-container, [role='log']",
+            userTurn: 'ms-chat-turn:has([data-turn-role="User"]), .user-message, [data-role="user"], [data-author="user"]',
+            aiTurn: 'ms-chat-turn:has([data-turn-role="Model"]), .model-message, [data-role="model"], [data-role="assistant"], [data-author="model"]',
+            aiTurnMoreOptionsButton: 'ms-chat-turn-options button[aria-label="Open options"], ms-chat-turn-options button[aria-label="More options"], button[aria-label*="options" i]',
+            aiTurnContextMenuItems: 'div.cdk-overlay-pane:not([style*="display: none"]) .mat-mdc-menu-item, div.cdk-overlay-pane:not([style*="display: none"]) .mdc-list-item, [role="menuitem"]',
+            siteHeading: "h1.gradient-text, header h1, .app-title",
+            promptChipsContainer: ".chips-container, .suggestion-chips",
+            inputPlaceholderOverlay: ".placeholder-overlay, .input-placeholder",
+            chatTurnFooter: ".turn-footer, .message-actions, .feedback-container",
+            aiTurnCodeBlock: "pre > code, pre, ms-code-block, .code-block",
+            zeroStateWrapper: ".zero-state-wrapper, .empty-state",
+            anyChatTurn: "ms-chat-turn, .chat-message, .message",
+            siteDisclaimerText: ".disclaimer-container span.disclaimer, .disclaimer-text",
+            promptInputWrapper: ".prompt-input-wrapper-container, .input-wrapper, .prompt-box"
         },
         ids: {
             scriptButton: "advanced-control-toggle-button",
@@ -80,7 +83,7 @@
             hidePromptChips: !1,
             hideFeedbackButtons: !1,
             activeTheme: "default",
-            promptSnippets: JSON.parse(GM_getResourceText("SNIPPETS_JSON")),
+            promptSnippets: (() => { try { return JSON.parse(GM_getResourceText("SNIPPETS_JSON") || "[]"); } catch(e) { return []; } })(),
             showSnippetToolbarInModal: !0,
             vibeModeActive: !1,
             personalThemePalette: {
@@ -121,6 +124,7 @@
         },
         minExchangesForProfileTheme: 3
     };
+
     window.State = {
         isVibeModeActive: !1,
         activeTheme: "default",
@@ -140,6 +144,7 @@
         aiThemeModalCurrentSvgData: {},
         aiThemeModalConfirmationText: ""
     };
+
     window.Settings = {
         async load() {
             const storedSettings = JSON.parse(await GM_getValue(window.Config.settingsKey) || "{}");
@@ -225,8 +230,26 @@
             window.ThemeManager.applyTheme("default");
         }
     };
+
     window.Styles = {
-        coreStyles: `\n        /* Basic UI hiding classes - essential structure only */\n        .adv-controls-hide-ui-sidebars ms-navbar,\n        .adv-controls-hide-ui-sidebars ms-right-side-panel {\n            display: none !important;\n        }\n        .adv-controls-hide-ui-header ms-header-root {\n            display: none !important;\n        }\n        .adv-controls-hide-ui-toolbar ms-toolbar {\n            display: none !important;\n        }\n    `,
+        coreStyles: `
+        /* Basic UI hiding classes - expanded for new selectors */
+        .adv-controls-hide-ui-sidebars ms-navbar,
+        .adv-controls-hide-ui-sidebars ms-right-side-panel,
+        .adv-controls-hide-ui-sidebars aside.sidebar,
+        .adv-controls-hide-ui-sidebars nav[aria-label='Main menu'] {
+            display: none !important;
+        }
+        .adv-controls-hide-ui-header ms-header-root,
+        .adv-controls-hide-ui-header header.main-header,
+        .adv-controls-hide-ui-header top-app-bar {
+            display: none !important;
+        }
+        .adv-controls-hide-ui-toolbar ms-toolbar,
+        .adv-controls-hide-ui-toolbar .toolbar-container {
+            display: none !important;
+        }
+    `,
         addCoreStyles() {
             if (this.coreStyles) {
                 GM_addStyle(this.coreStyles);
@@ -234,6 +257,7 @@
         },
         addPopupStyles() {}
     };
+
     window.DOM = {
         createElement(tag, attributes = {}, children = []) {
             const element = document.createElement(tag);
@@ -318,6 +342,7 @@
             return container;
         }
     };
+
     window.NotificationManager = {
         showNotification(message, duration = 3e3) {
             const existingNotification = document.getElementById("eic-notification");
@@ -337,6 +362,7 @@
             }), duration);
         }
     };
+
     window.EventBus = {
         events: {},
         subscribe(eventName, callback) {
@@ -356,6 +382,7 @@
             }
         }
     };
+
     window.Icons = {
         defaults: {
             eyeInTheCloudDefault: {
@@ -736,6 +763,7 @@
             }
         }
     };
+
     window.EIC_Icons_Personal = {
         buttonStates: {
             Default: {
@@ -881,7 +909,7 @@
                 }, {
                     type: "path",
                     attrs: {
-                        "d": "M19,5 L17,5 L17,7 M5,5 L7,5 L7,7 M19,19 L17,19 L17,17 M5,19 L7,19 L7,17",
+                        "d": "M19,5 L17,5 L17,7 M5,5 L7,5 L7,7 M19,19 L17,19 L17,19 M5,19 L7,19 L7,17",
                         "fill": "none",
                         "stroke": "var(--eic-global-tertiary)",
                         "stroke-width": "1",
@@ -891,6 +919,7 @@
             }
         }
     };
+
     window.EIC_Icons_DOS = {
         buttonStates: {
             Default: {
@@ -1357,6 +1386,7 @@
             }
         }
     };
+
     window.EIC_Icons_Nature = {
         buttonStates: {
             Default: {
@@ -1505,6 +1535,7 @@
             }
         }
     };
+
     window.ThemeManager = {
         staticThemeStyleElements: {
             personal: null,
@@ -1523,9 +1554,11 @@
             const effectiveThemeName = !themeName ? "default" : themeName;
             const classesToRemove = Array.from(document.body.classList).filter((cls => cls.startsWith("theme-") || "eic-theme-active" === cls));
             document.body.classList.remove(...classesToRemove);
-            this.staticThemeStyleElements.personal.disabled = !0;
-            this.staticThemeStyleElements.dos.disabled = !0;
-            this.staticThemeStyleElements.nature.disabled = !0;
+            
+            if(this.staticThemeStyleElements.personal) this.staticThemeStyleElements.personal.disabled = !0;
+            if(this.staticThemeStyleElements.dos) this.staticThemeStyleElements.dos.disabled = !0;
+            if(this.staticThemeStyleElements.nature) this.staticThemeStyleElements.nature.disabled = !0;
+            
             let dynamicStyleTag = document.getElementById("eic-customized-palette-styles");
             if (dynamicStyleTag) {
                 dynamicStyleTag.disabled = !0;
@@ -1549,11 +1582,11 @@
                     cssPaletteText += "}\n";
                     dynamicStyleTag.textContent = cssPaletteText;
                     dynamicStyleTag.disabled = !1;
-                } else if ("personal" === effectiveThemeName) {
+                } else if ("personal" === effectiveThemeName && this.staticThemeStyleElements.personal) {
                     this.staticThemeStyleElements.personal.disabled = !1;
-                } else if ("dos" === effectiveThemeName) {
+                } else if ("dos" === effectiveThemeName && this.staticThemeStyleElements.dos) {
                     this.staticThemeStyleElements.dos.disabled = !1;
-                } else if ("nature" === effectiveThemeName) {
+                } else if ("nature" === effectiveThemeName && this.staticThemeStyleElements.nature) {
                     this.staticThemeStyleElements.nature.disabled = !1;
                 }
             }
@@ -1594,6 +1627,26 @@
             return iconData;
         }
     };
+
+    // --- Core helper for resilient query selectors ---
+    const getResilientElement = (selectorString, all = false) => {
+        const selectors = selectorString.split(',').map(s => s.trim());
+        for (const selector of selectors) {
+            try {
+                if (all) {
+                    const elements = document.querySelectorAll(selector);
+                    if (elements.length > 0) return elements;
+                } else {
+                    const el = document.querySelector(selector);
+                    if (el) return el;
+                }
+            } catch (e) {
+                // Ignore malformed/unsupported pseudo selectors in the string
+            }
+        }
+        return all ? [] : null;
+    };
+
     window.HistoryManager = {
         calculateSliderFillPercentage(value, min, max) {
             if (max > min) {
@@ -1635,10 +1688,9 @@
             window.UI.applyChatVisibilityDOM(visibilityPlan);
         },
         getHistoryVisibilityPlan() {
-            const chatContainer = document.querySelector(window.Config.selectors.chatContainer);
-            if (!chatContainer) {
-                return new Set;
-            }
+            const chatContainer = getResilientElement(window.Config.selectors.chatContainer);
+            if (!chatContainer) return new Set();
+
             const isVibe = window.State.isVibeModeActive;
             let showAll, limitCount, effectiveViewMode;
             if (isVibe) {
@@ -1650,32 +1702,43 @@
                 limitCount = window.State.settings.numTurnsToShow;
                 effectiveViewMode = window.State.settings.historyViewMode;
             }
-            const allTurns = Array.from(chatContainer.querySelectorAll(`${window.Config.selectors.userTurn}, ${window.Config.selectors.aiTurn}`));
-            const visibleTurnsSet = new Set;
+
+            const allTurnsSelector = window.Config.selectors.userTurn + ', ' + window.Config.selectors.aiTurn;
+            const allTurns = Array.from(getResilientElement(allTurnsSelector, true) || []);
+            const visibleTurnsSet = new Set();
+            
             if (showAll) {
-                allTurns.forEach((turn => visibleTurnsSet.add(turn)));
+                allTurns.forEach(turn => visibleTurnsSet.add(turn));
             } else if ("exchanges" === effectiveViewMode) {
-                const aiTurns = Array.from(chatContainer.querySelectorAll(window.Config.selectors.aiTurn));
+                const aiTurns = Array.from(getResilientElement(window.Config.selectors.aiTurn, true) || []);
                 const recentAiTurns = aiTurns.slice(-limitCount);
                 recentAiTurns.forEach((aiTurn => {
                     visibleTurnsSet.add(aiTurn);
                     let previousElement = aiTurn.previousElementSibling;
-                    for (;previousElement && !previousElement.matches(window.Config.selectors.userTurn) && !previousElement.matches(window.Config.selectors.aiTurn); ) {
+                    for (;previousElement; ) {
+                        // Resilient match check
+                        let isUserOrAi = false;
+                        for(const s of (window.Config.selectors.userTurn + ',' + window.Config.selectors.aiTurn).split(',')) {
+                            try { if(previousElement.matches(s.trim())) isUserOrAi = true; } catch(e){}
+                        }
+                        if(isUserOrAi) break;
                         previousElement = previousElement.previousElementSibling;
                     }
-                    if (previousElement && previousElement.matches(window.Config.selectors.userTurn)) {
-                        visibleTurnsSet.add(previousElement);
+                    if (previousElement) {
+                        let isUser = false;
+                        for(const s of window.Config.selectors.userTurn.split(',')) {
+                            try { if(previousElement.matches(s.trim())) isUser = true; } catch(e){}
+                        }
+                        if(isUser) visibleTurnsSet.add(previousElement);
                     }
                 }));
                 if (0 === aiTurns.length && limitCount >= 1) {
-                    const userTurns = Array.from(chatContainer.querySelectorAll(window.Config.selectors.userTurn));
-                    if (userTurns.length > 0) {
-                        visibleTurnsSet.add(userTurns[userTurns.length - 1]);
-                    }
+                    const userTurns = Array.from(getResilientElement(window.Config.selectors.userTurn, true) || []);
+                    if (userTurns.length > 0) visibleTurnsSet.add(userTurns[userTurns.length - 1]);
                 }
             } else {
                 const recentTurns = allTurns.slice(-limitCount);
-                recentTurns.forEach((turn => visibleTurnsSet.add(turn)));
+                recentTurns.forEach(turn => visibleTurnsSet.add(turn));
             }
             return visibleTurnsSet;
         },
@@ -1792,6 +1855,7 @@
         },
         initialize() {}
     };
+
     window.UI = {
         init() {
             window.EventBus.subscribe(window.ThemeManager.events.THEME_CHANGED, (data => {
@@ -1831,19 +1895,19 @@
             });
         },
         updateHeadingText() {
-            const heading = document.querySelector(window.Config.selectors.siteHeading);
+            const heading = getResilientElement(window.Config.selectors.siteHeading);
             if (heading && window.State?.settings) {
                 heading.textContent = window.State.settings.headingText;
             }
         },
         updatePromptChipsVisibility() {
-            const chips = document.querySelector(window.Config.selectors.promptChipsContainer);
+            const chips = getResilientElement(window.Config.selectors.promptChipsContainer);
             if (chips && window.State?.settings) {
                 chips.style.display = window.State.isVibeModeActive || window.State.settings.hidePromptChips ? "none" : "";
             }
         },
         updateInputPlaceholder() {
-            const overlay = document.querySelector(window.Config.selectors.inputPlaceholderOverlay);
+            const overlay = getResilientElement(window.Config.selectors.inputPlaceholderOverlay);
             if (overlay) {
                 overlay.textContent = "If I tried to write a million words a day...";
             }
@@ -1852,8 +1916,8 @@
             if (!window.State?.settings) {
                 return;
             }
-            const footers = document.querySelectorAll(window.Config.selectors.chatTurnFooter);
-            if (0 === footers.length) {
+            const footers = getResilientElement(window.Config.selectors.chatTurnFooter, true) || [];
+            if (footers.length === 0) {
                 return;
             }
             const shouldHide = window.State.isVibeModeActive || window.State.settings.hideFeedbackButtons;
@@ -1862,7 +1926,7 @@
             }));
         },
         applyLayoutRules() {
-            const layoutContainer = document.querySelector(window.Config.selectors.overallLayout);
+            const layoutContainer = getResilientElement(window.Config.selectors.overallLayout);
             if (!layoutContainer || !window.State?.settings) {
                 return;
             }
@@ -1870,8 +1934,8 @@
             const shouldHideRightSidebar = window.State.isVibeModeActive ? !0 : window.State.settings.hideRightSidebar;
             const shouldHideHeader = window.State.isVibeModeActive ? !0 : window.State.settings.hideHeader;
             const shouldHideToolbar = window.State.isVibeModeActive ? !0 : window.State.settings.hideToolbar;
-            const leftSidebarElement = document.querySelector(window.Config.selectors.leftSidebar);
-            const rightSidebarElement = document.querySelector(window.Config.selectors.rightSidebar);
+            const leftSidebarElement = getResilientElement(window.Config.selectors.leftSidebar);
+            const rightSidebarElement = getResilientElement(window.Config.selectors.rightSidebar);
             if (leftSidebarElement) {
                 leftSidebarElement.style.display = shouldHideLeftSidebar ? "none" : "";
             }
@@ -1883,11 +1947,12 @@
             layoutContainer.classList.toggle(`${window.Config.classes.layoutHide}-toolbar`, shouldHideToolbar);
         },
         applyChatVisibilityDOM(visibleElementsSet) {
-            const chatContainer = document.querySelector(window.Config.selectors.chatContainer);
+            const chatContainer = getResilientElement(window.Config.selectors.chatContainer);
             if (!chatContainer) {
                 return;
             }
-            const allTurns = Array.from(chatContainer.querySelectorAll(`${window.Config.selectors.userTurn}, ${window.Config.selectors.aiTurn}`));
+            const allTurnsSelector = window.Config.selectors.userTurn + ', ' + window.Config.selectors.aiTurn;
+            const allTurns = Array.from(getResilientElement(allTurnsSelector, true) || []);
             let localDidHideSomething = !1;
             allTurns.forEach((turn => {
                 const shouldBeVisible = visibleElementsSet.has(turn);
@@ -1907,6 +1972,7 @@
             }
         }
     };
+
     window.promptcomposer = {
         modalElement: null,
         modalTextarea: null,
@@ -1962,7 +2028,7 @@
                     this.triggerButton = null;
                 }
                 if (!this.triggerButton) {
-                    const parentContainer = document.querySelector(targetContainerSelector);
+                    const parentContainer = getResilientElement(targetContainerSelector);
                     if (!parentContainer) {
                         return;
                     }
@@ -2328,7 +2394,7 @@
             if (!this.modalTextarea) {
                 return;
             }
-            const realInput = document.querySelector(window.Config.selectors.chatInput);
+            const realInput = getResilientElement(window.Config.selectors.chatInput);
             if (!realInput) {
                 this.hideModal();
                 return;
@@ -2351,8 +2417,8 @@
             if (!this.modalTextarea) {
                 return;
             }
-            const realInput = document.querySelector(window.Config.selectors.chatInput);
-            const realRunButton = document.querySelector(window.Config.selectors.runButton);
+            const realInput = getResilientElement(window.Config.selectors.chatInput);
+            const realRunButton = getResilientElement(window.Config.selectors.runButton);
             if (!realInput || !realRunButton) {
                 this.hideModal();
                 return;
@@ -2457,6 +2523,7 @@
             }
         }
     };
+
     window.ModalEye = {
         _modalStateToSvgState: {
             "idle": "Default",
@@ -2698,8 +2765,8 @@
             this.setState("confirmationTextFadingIn");
         },
         _getChatTurnCount() {
-            const userTurns = document.querySelectorAll(window.Config.selectors.userTurn).length;
-            const aiTurns = document.querySelectorAll(window.Config.selectors.aiTurn).length;
+            const userTurns = getResilientElement(window.Config.selectors.userTurn, true)?.length || 0;
+            const aiTurns = getResilientElement(window.Config.selectors.aiTurn, true)?.length || 0;
             return userTurns + aiTurns;
         },
         updateThemeVisuals() {
@@ -2711,6 +2778,7 @@
             }
         }
     };
+
     window.Popup = {
         _personalThemeVarLabels: {
             "--eic-global-background": "Overall Page Background",
@@ -3508,7 +3576,9 @@
             return computedVariables;
         }
     };
+
     document.addEventListener("DOMContentLoaded", (() => {}));
+    
     window.EyeBot = {
         init() {
             document.addEventListener("eic:geminiThemeDataReceived", (event => {
@@ -3518,11 +3588,11 @@
             }));
         },
         submitPreparedPromptToAI: function(promptString) {
-            const realInput = document.querySelector(window.Config.selectors.chatInput);
-            const realRunButton = document.querySelector(window.Config.selectors.runButton);
+            const realInput = getResilientElement(window.Config.selectors.chatInput);
+            const realRunButton = getResilientElement(window.Config.selectors.runButton);
             if (realInput && realRunButton) {
                 const aiSelector = window.Config.selectors.aiTurn;
-                const currentAiTurns = document.querySelectorAll(aiSelector);
+                const currentAiTurns = getResilientElement(aiSelector, true) || [];
                 window.State.waitingForThemeAiTurnAfter = currentAiTurns.length;
                 realInput.value = promptString;
                 realInput.dispatchEvent(new Event("input", {
@@ -3587,7 +3657,7 @@
             window.NotificationManager.showNotification("Starting cleanup of the received code...", 3e3);
             const turnsGeneratedByThemeBot = null !== window.State.waitingForThemeAiTurnAfter ? (() => {
                 const aiSelector = window.Config.selectors.aiTurn;
-                const aiTurns = document.querySelectorAll(aiSelector);
+                const aiTurns = getResilientElement(aiSelector, true) || [];
                 const currentCount = aiTurns.length;
                 const startIdx = window.State.waitingForThemeAiTurnAfter;
                 return "number" == typeof startIdx && startIdx >= 0 && currentCount > startIdx ? currentCount - startIdx : 0;
@@ -3599,13 +3669,23 @@
         },
         async deleteLastAiTurns(countToDelete) {
             try {
-                const chatContainer = document.querySelector(window.Config.selectors.chatContainer);
-                const aiTurns = Array.from(chatContainer.querySelectorAll(window.Config.selectors.aiTurn));
+                const chatContainer = getResilientElement(window.Config.selectors.chatContainer);
+                const aiTurns = Array.from(getResilientElement(window.Config.selectors.aiTurn, true) || []);
                 const turnsToDelete = aiTurns.slice(-countToDelete);
                 for (const turnElement of turnsToDelete.reverse()) {
                     await this.deleteSingleTurn(turnElement);
                 }
-                const userTurn = chatContainer.querySelector(".user");
+                
+                // Broadened User turn selector cleanup
+                let userTurn = null;
+                for (const selector of window.Config.selectors.userTurn.split(',')) {
+                    try { 
+                        const found = chatContainer.querySelector(selector.trim()); 
+                        if(found) { userTurn = found; break; }
+                    } catch(e) {}
+                }
+                if(!userTurn) userTurn = chatContainer.querySelector(".user");
+
                 if (userTurn) {
                     await this.deleteSingleTurn(userTurn);
                 }
@@ -3613,10 +3693,10 @@
             } catch (err) {}
         },
         async deleteSingleTurn(turnElement) {
-            const moreBtn = turnElement.querySelector(window.Config.selectors.aiTurnMoreOptionsButton);
-            moreBtn.click();
+            const moreBtn = turnElement.querySelector(window.Config.selectors.aiTurnMoreOptionsButton.split(',')[0]) || getResilientElement(window.Config.selectors.aiTurnMoreOptionsButton);
+            if(moreBtn) moreBtn.click();
             await new Promise((resolve => setTimeout(resolve, 350)));
-            const menuItems = Array.from(document.querySelectorAll(window.Config.selectors.aiTurnContextMenuItems));
+            const menuItems = Array.from(getResilientElement(window.Config.selectors.aiTurnContextMenuItems, true) || []);
             let deleteBtn = null;
             for (const item of menuItems) {
                 const itemText = item.textContent?.toLowerCase() || "";
@@ -3626,10 +3706,11 @@
                     break;
                 }
             }
-            deleteBtn.click();
+            if(deleteBtn) deleteBtn.click();
             await new Promise((resolve => setTimeout(resolve, 700)));
         }
     };
+
     window.EICButtonManager = {
         scriptToggleButton: null,
         currentMainButtonState: "default",
@@ -3821,6 +3902,7 @@
             this.hitboxElement = null;
         }
     };
+
     window.ElementWatcher = {
         observer: null,
         debounceTimer: null,
@@ -3881,7 +3963,14 @@
             }
         },
         processAiTurnForThemeData(aiTurnElement) {
-            const codeBlocks = aiTurnElement.querySelectorAll(window.Config.selectors.aiTurnCodeBlock);
+            let codeBlocks = [];
+            for (const selector of window.Config.selectors.aiTurnCodeBlock.split(',')) {
+               try { 
+                   const found = aiTurnElement.querySelectorAll(selector.trim()); 
+                   if (found.length > 0) { codeBlocks = found; break; }
+               } catch(e) {}
+            }
+            
             if (0 === codeBlocks.length) {
                 return;
             }
@@ -3904,10 +3993,10 @@
             }
             if (null !== window.State.waitingForThemeAiTurnAfter) {
                 const aiSelector = window.Config.selectors.aiTurn;
-                const currentAiTurns = document.querySelectorAll(aiSelector);
+                const currentAiTurns = getResilientElement(aiSelector, true) || [];
                 const currentCount = currentAiTurns.length;
                 const startIdx = window.State.waitingForThemeAiTurnAfter;
-                const runBtn = document.querySelector(window.Config.selectors.runButton);
+                const runBtn = getResilientElement(window.Config.selectors.runButton);
                 const isLoading = runBtn && ("stop" === runBtn.textContent.trim().toLowerCase() || runBtn.className.includes("stoppable"));
                 if (isLoading) {
                     return;
@@ -3923,7 +4012,15 @@
                     if (!turn) {
                         continue;
                     }
-                    const codeBlocks = turn.querySelectorAll(window.Config.selectors.aiTurnCodeBlock);
+                    
+                    let codeBlocks = [];
+                    for(const selector of window.Config.selectors.aiTurnCodeBlock.split(',')) {
+                        try {
+                            const blocks = turn.querySelectorAll(selector.trim());
+                            if(blocks.length > 0) { codeBlocks = blocks; break; }
+                        } catch(e) {}
+                    }
+                    
                     if (codeBlocks.length > 0) {
                         this.processAiTurnForThemeData(turn);
                     }
@@ -3953,16 +4050,16 @@
             window.HistoryManager.applyVisibilityRules();
             if (window.State.popupElement?.classList.contains("visible")) {
                 try {
-                    const chatContainerForSlider = document.querySelector(window.Config.selectors.chatContainer);
+                    const chatContainerForSlider = getResilientElement(window.Config.selectors.chatContainer);
                     if (chatContainerForSlider) {
-                        const aiTurns = chatContainerForSlider.querySelectorAll(window.Config.selectors.aiTurn);
+                        const aiTurns = getResilientElement(window.Config.selectors.aiTurn, true) || [];
                         const maxExchanges = aiTurns.length > 0 ? aiTurns.length : 1;
                         window.HistoryManager.updateSliderMax(maxExchanges);
                     }
                 } catch (error) {}
             }
             try {
-                const disclaimerSpan = document.querySelector(window.Config.selectors.siteDisclaimerText);
+                const disclaimerSpan = getResilientElement(window.Config.selectors.siteDisclaimerText);
                 if (disclaimerSpan) {
                     const newDisclaimerText = "This reality is for testing only. No production use.";
                     if (disclaimerSpan.textContent.trim() !== newDisclaimerText) {
@@ -4002,6 +4099,7 @@
             this._hasStarted = !1;
         }
     };
+
     window.Snippets = {
         init() {
             this.createSnippetsPanel();
@@ -4318,10 +4416,11 @@
             });
         }
     };
+
     window.Snippets.initialize = function() {
         window.Snippets.init();
-        window.State.settings.promptSnippets;
     };
+
     window.PromptTemplates = {};
     !function(PT) {
         try {
@@ -4350,6 +4449,7 @@
             return;
         }
     }(window.PromptTemplates);
+
     window.EyeCommands = {
         resetSettingsToDefault: async function() {
             await window.Settings.resetToDefaults();
@@ -4382,6 +4482,7 @@
             }
         }
     };
+
     window.App = {
         async init() {
             await window.Settings.load();
@@ -4389,25 +4490,27 @@
                 window.State.isVibeModeActive = !0;
             }
             const injectCss = (resourceName, styleId) => {
-                const cssText = GM_getResourceText(resourceName);
-                const styleEl = GM_addStyle(cssText);
-                if (styleId) {
-                    styleEl.id = styleId;
-                }
-                if (styleId) {
-                    styleEl.disabled = !0;
-                }
+                try {
+                    const cssText = GM_getResourceText(resourceName);
+                    if(cssText) {
+                        const styleEl = GM_addStyle(cssText);
+                        if (styleId) {
+                            styleEl.id = styleId;
+                            styleEl.disabled = !0;
+                        }
+                    }
+                } catch(e) {}
             };
-            GM_addStyle(GM_getResourceText("MAIN_CSS"));
-            GM_addStyle(GM_getResourceText("POPUP_CSS"));
-            GM_addStyle(GM_getResourceText("SNIPPETS_CSS"));
-            GM_addStyle(GM_getResourceText("EYE_MODAL_CSS"));
-            GM_addStyle(GM_getResourceText("PROMPT_COMPOSER_CSS"));
-            GM_addStyle(GM_getResourceText("GOOGLE_OVERRIDES_CSS"));
-            GM_addStyle(GM_getResourceText("THEME_TEMPLATE_CSS"));
+            
+            // Safe injection matching modern Tampermonkey specifications
+            ['MAIN_CSS', 'POPUP_CSS', 'SNIPPETS_CSS', 'EYE_MODAL_CSS', 'PROMPT_COMPOSER_CSS', 'GOOGLE_OVERRIDES_CSS', 'THEME_TEMPLATE_CSS'].forEach(r => {
+                try { const css = GM_getResourceText(r); if(css) GM_addStyle(css); } catch(e){}
+            });
+            
             injectCss("PERSONAL_THEME_CSS", "eic-theme-personal-css");
             injectCss("DOS_THEME_CSS", "eic-theme-dos-css");
             injectCss("NATURE_THEME_CSS", "eic-theme-nature-css");
+            
             window.Styles.addCoreStyles();
             window.UI.init();
             window.Popup.create();
@@ -4424,7 +4527,7 @@
             window.UI.applyLayoutRules();
         },
         initializeProgressively() {
-            const layoutContainer = document.querySelector(window.Config.selectors.overallLayout);
+            const layoutContainer = getResilientElement(window.Config.selectors.overallLayout);
             if (layoutContainer && !layoutContainer.dataset.eicLayoutRulesApplied) {
                 window.UI.applyLayoutRules();
                 layoutContainer.dataset.eicLayoutRulesApplied = "true";
