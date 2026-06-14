@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eye in the Cloud - A Google AI Studio Focused Experience (2026 Resilience Update)
 // @namespace    https://github.com/soitgoes-again/eyeinthecloud
-// @version      1.0.0
+// @version      1.0.1
 // @description  Get focused by hiding the clutter, hide chat history, lag free text box, VIBE Mode, and themes!
 // @author       so it goes...again (Forked/Updated 2026)
 // @match        https://aistudio.google.com/*
@@ -29,31 +29,31 @@
 !function() {
     "use strict";
 
-    // --- 2026 DOM Resilience Update ---
-    // Expanded selectors with fallbacks to catch newer Google AI Studio DOM changes
+    // --- DOM Diagnostics Applied ---
+    // Selectors precision-tuned using 2026 diagnostic scan
     window.Config = {
         selectors: {
-            leftSidebar: "ms-navbar, nav[aria-label='Main menu'], aside.sidebar, .side-nav",
-            rightSidebar: "ms-right-side-panel, .right-panel, aside[aria-label='Settings']",
-            header: "ms-header-root, header.main-header, top-app-bar, header",
-            toolbar: "ms-toolbar, .toolbar-container, [role='toolbar'], .prompt-toolbar",
-            chatInput: "ms-prompt-input-wrapper textarea, textarea[aria-label*='prompt' i], textarea[placeholder*='Type' i], .prompt-input textarea",
-            runButton: 'button.run-button[aria-label="Run"], button[aria-label*="Run" i], button.send-button, button[mattooltip*="Run"]',
+            leftSidebar: "ms-navbar-v2, .v3-left-nav, ms-navbar, nav[aria-label='Main menu']",
+            rightSidebar: "ms-right-side-panel, ms-settings-menu, aside[aria-label='Settings']",
+            header: "ms-header, ms-header-root, header.main-header, top-app-bar",
+            toolbar: "ms-playground-toolbar, ms-prompt-box-tools, ms-toolbar, .toolbar-container",
+            chatInput: "textarea[aria-label='Enter a prompt'], .text-wrapper textarea, ms-prompt-box textarea",
+            runButton: "ms-run-button button, .toolbar-right button.ms-button-primary, button.run-button",
             overallLayout: "body > app-root > ms-app > div, app-root > div, .app-layout",
-            chatContainer: "ms-autoscroll-container, .chat-history, .messages-container, [role='log']",
-            userTurn: 'ms-chat-turn:has([data-turn-role="User"]), .user-message, [data-role="user"], [data-author="user"]',
-            aiTurn: 'ms-chat-turn:has([data-turn-role="Model"]), .model-message, [data-role="model"], [data-role="assistant"], [data-author="model"]',
-            aiTurnMoreOptionsButton: 'ms-chat-turn-options button[aria-label="Open options"], ms-chat-turn-options button[aria-label="More options"], button[aria-label*="options" i]',
-            aiTurnContextMenuItems: 'div.cdk-overlay-pane:not([style*="display: none"]) .mat-mdc-menu-item, div.cdk-overlay-pane:not([style*="display: none"]) .mdc-list-item, [role="menuitem"]',
+            chatContainer: "ms-autoscroll-container, ms-chat-session, .chat-history",
+            userTurn: ".user-prompt-container, [data-turn-role='User'], .chat-turn-container.user",
+            aiTurn: ".model-prompt-container, [data-turn-role='Model'], .chat-turn-container.model",
+            aiTurnMoreOptionsButton: "ms-chat-turn-options button, button[aria-label='More options']",
+            aiTurnContextMenuItems: "div.cdk-overlay-pane:not([style*='display: none']) .mat-mdc-menu-item, [role='menuitem']",
             siteHeading: "h1.gradient-text, header h1, .app-title",
             promptChipsContainer: ".chips-container, .suggestion-chips",
             inputPlaceholderOverlay: ".placeholder-overlay, .input-placeholder",
-            chatTurnFooter: ".turn-footer, .message-actions, .feedback-container",
-            aiTurnCodeBlock: "pre > code, pre, ms-code-block, .code-block",
-            zeroStateWrapper: ".zero-state-wrapper, .empty-state",
-            anyChatTurn: "ms-chat-turn, .chat-message, .message",
-            siteDisclaimerText: ".disclaimer-container span.disclaimer, .disclaimer-text",
-            promptInputWrapper: ".prompt-input-wrapper-container, .input-wrapper, .prompt-box"
+            chatTurnFooter: "ms-chat-turn-options, .turn-footer, .message-actions",
+            aiTurnCodeBlock: "ms-code-block, pre > code, pre",
+            zeroStateWrapper: "ms-zero-state, .zero-state-wrapper, .empty-state",
+            anyChatTurn: "ms-chat-turn, .chat-turn-container",
+            siteDisclaimerText: "ms-navbar-disclaimer, .disclaimer-container span.disclaimer, .disclaimer-text",
+            promptInputWrapper: ".text-wrapper, ms-prompt-box, .prompt-input-wrapper-container"
         },
         ids: {
             scriptButton: "advanced-control-toggle-button",
@@ -233,19 +233,25 @@
 
     window.Styles = {
         coreStyles: `
-        /* Basic UI hiding classes - expanded for new selectors */
+        /* Basic UI hiding classes - expanded for new diagnostics selectors */
+        .adv-controls-hide-ui-sidebars ms-navbar-v2,
         .adv-controls-hide-ui-sidebars ms-navbar,
+        .adv-controls-hide-ui-sidebars .v3-left-nav,
         .adv-controls-hide-ui-sidebars ms-right-side-panel,
+        .adv-controls-hide-ui-sidebars ms-settings-menu,
         .adv-controls-hide-ui-sidebars aside.sidebar,
         .adv-controls-hide-ui-sidebars nav[aria-label='Main menu'] {
             display: none !important;
         }
+        .adv-controls-hide-ui-header ms-header,
         .adv-controls-hide-ui-header ms-header-root,
         .adv-controls-hide-ui-header header.main-header,
         .adv-controls-hide-ui-header top-app-bar {
             display: none !important;
         }
+        .adv-controls-hide-ui-toolbar ms-playground-toolbar,
         .adv-controls-hide-ui-toolbar ms-toolbar,
+        .adv-controls-hide-ui-toolbar ms-prompt-box-tools,
         .adv-controls-hide-ui-toolbar .toolbar-container {
             display: none !important;
         }
